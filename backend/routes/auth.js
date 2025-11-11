@@ -31,10 +31,11 @@ const registerLimiter = rateLimit({
 // Rutas públicas (sin autenticación)
 router.post('/register', registerLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post('/reset-password', authLimiter, authController.resetPassword);
 
 // Rutas protegidas (requieren autenticación)
 router.post('/logout', authMiddleware, authController.logout);
-router.get('/profile', authMiddleware, authController.getProfile);
 router.get('/verify', authMiddleware, authController.verifyToken);
 
 module.exports = router;

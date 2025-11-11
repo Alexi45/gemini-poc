@@ -1,5 +1,5 @@
-const AuthService = require('../services/AuthService');
-const User = require('../models/User');
+const { getAuthServiceInstance } = require('../services/AuthService');
+const { getUserInstance } = require('../models/User');
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -12,20 +12,24 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Verificar si el token está en la lista negra o expirado
-    const isActive = await AuthService.isTokenActive(token);
-    if (!isActive) {
+    const authService = getAuthServiceInstance();
+
+    // Verificar si la sesión es válida en la base de datos
+    const isValidSession = await authService.isValidSession(token);
+    if (!isValidSession) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Token inválido o expirado. Por favor, inicia sesión nuevamente.' 
+        message: 'Sesión inválida o expirada. Por favor, inicia sesión nuevamente.' 
       });
     }
 
-    // Verificar y decodificar el token
-    const decoded = AuthService.verifyToken(token);
+    // Verificar y decodificar el token JWT
+    const decoded = authService.verifyToken(token);
     
     // Obtener información del usuario
-    const user = await User.findById(decoded.userId);
+    const userModel = getUserInstance();
+    const user = await userModel.findById(decoded.userId);
+    
     if (!user) {
       return res.status(401).json({ 
         success: false, 
@@ -48,9 +52,9 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor durante la autenticación.' 
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor en autenticación'
     });
   }
 };
