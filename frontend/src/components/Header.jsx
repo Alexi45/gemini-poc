@@ -20,7 +20,7 @@ const Header = () => {
     if (!email) return 'U';
     const name = email.split('@')[0];
     return name.charAt(0).toUpperCase();
-  };
+  }; 
 
   const getDisplayName = (email) => {
     if (!email) return 'Usuario';
