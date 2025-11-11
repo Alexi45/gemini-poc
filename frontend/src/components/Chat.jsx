@@ -1,0 +1,281 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { chatAPI } from '../services/api';
+import Header from './Header';
+
+const Chat = () => {
+  const { user } = useAuth();
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connected');
+  const [messageCount, setMessageCount] = useState(0);
+  const chatEndRef = useRef(null);
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading, isTyping]);
+
+  // Check backend connection on mount
+  useEffect(() => {
+    checkConnection();
+  }, []);
+
+  const checkConnection = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/api/test');
+      setConnectionStatus(response.ok ? 'connected' : 'error');
+    } catch (err) {
+      setConnectionStatus('disconnected');
+    }
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    
+    const userMessage = {
+      role: 'user', 
+      text: input, 
+      timestamp: new Date(),
+      id: Date.now()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setMessageCount(prev => prev + 1);
+    setLoading(true);
+    setIsTyping(true);
+    
+    const currentInput = input;
+    setInput('');
+
+    try {
+      const response = await chatAPI.sendMessage(currentInput);
+      
+      setIsTyping(false);
+      
+      if (response.success) {
+        const assistantMessage = {
+          role: 'assistant',
+          text: response.message,
+          timestamp: new Date(),
+          id: Date.now() + 1
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        setConnectionStatus('connected');
+      } else {
+        throw new Error(response.error || 'Error desconocido');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setIsTyping(false);
+      
+      const errorMessage = {
+        role: 'assistant',
+        text: `Error: ${error.response?.data?.message || error.message || 'No se pudo conectar con el servidor'}`,
+        timestamp: new Date(),
+        id: Date.now() + 1,
+        error: true
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      setConnectionStatus('error');
+    } finally {
+      setLoading(false);
+      setIsTyping(false);
+    }
+  };
+
+  const handleQuickAction = (action) => {
+    setInput(action);
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    setMessageCount(0);
+  };
+
+  const getStatusIcon = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return <CheckCircle size={16} className="status-icon connected" />;
+      case 'error':
+        return <AlertCircle size={16} className="status-icon error" />;
+      case 'disconnected':
+        return <XCircle size={16} className="status-icon disconnected" />;
+      default:
+        return <Clock size={16} className="status-icon" />;
+    }
+  };
+
+  const getStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return 'Conectado';
+      case 'error':
+        return 'Error de conexión';
+      case 'disconnected':
+        return 'Desconectado';
+      default:
+        return 'Verificando...';
+    }
+  };
+
+  return (
+    <div className="chat-container">
+      <Header />
+      
+      <div className="chat-content">
+        <div className="status-bar">
+          <div className="status-info">
+            {getStatusIcon()}
+            <span>{getStatusText()}</span>
+          </div>
+          <div className="chat-stats">
+            <MessageCircle size={16} />
+            <span>{messageCount} mensajes</span>
+            {messageCount > 0 && (
+              <button onClick={clearChat} className="clear-btn" title="Limpiar chat">
+                <RotateCcw size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="messages-container">
+          {messages.length === 0 && (
+            <div className="welcome-message">
+              <div className="welcome-icon">
+                <Sparkles size={48} />
+              </div>
+              <h2>¡Hola, {user?.firstName}! 👋</h2>
+              <p>Soy Gemini AI, tu asistente inteligente. ¿En qué puedo ayudarte hoy?</p>
+              
+              <div className="quick-actions">
+                <h3>Acciones rápidas:</h3>
+                <div className="quick-buttons">
+                  <button onClick={() => handleQuickAction('Explícame qué es la inteligencia artificial')}>
+                    <Zap size={16} />
+                    ¿Qué es la IA?
+                  </button>
+                  <button onClick={() => handleQuickAction('Ayúdame a escribir un email profesional')}>
+                    <Zap size={16} />
+                    Escribir email
+                  </button>
+                  <button onClick={() => handleQuickAction('Dame consejos para ser más productivo')}>
+                    <Zap size={16} />
+                    Ser productivo
+                  </button>
+                  <button onClick={() => handleQuickAction('Cuéntame un dato interesante')}>
+                    <Zap size={16} />
+                    Dato curioso
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {messages.map((message) => (
+            <div key={message.id} className={`message ${message.role} ${message.error ? 'error' : ''}`}>
+              <div className="message-avatar">
+                {message.role === 'user' ? (
+                  <div className="user-avatar">
+                    <User size={20} />
+                  </div>
+                ) : (
+                  <div className="bot-avatar">
+                    <Bot size={20} />
+                  </div>
+                )}
+              </div>
+              <div className="message-content">
+                <div className="message-header">
+                  <span className="message-sender">
+                    {message.role === 'user' ? user?.firstName || 'Tú' : 'Gemini AI'}
+                  </span>
+                  <span className="message-time">
+                    <Clock size={12} />
+                    {formatTime(message.timestamp)}
+                  </span>
+                </div>
+                <div className="message-text">{message.text}</div>
+              </div>
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="message assistant typing">
+              <div className="message-avatar">
+                <div className="bot-avatar">
+                  <Bot size={20} />
+                </div>
+              </div>
+              <div className="message-content">
+                <div className="message-header">
+                  <span className="message-sender">Gemini AI</span>
+                  <span className="message-time">
+                    <Clock size={12} />
+                    {formatTime(new Date())}
+                  </span>
+                </div>
+                <div className="typing-indicator">
+                  <div className="typing-dots">
+                    <div className="dot"></div>
+                    <div className="dot"></div>
+                    <div className="dot"></div>
+                  </div>
+                  <span>Escribiendo...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        <div className="input-container">
+          <div className="input-wrapper">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder={loading ? 'Enviando mensaje...' : 'Escribe tu mensaje aquí...'}
+              disabled={loading}
+              className="message-input"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              className={`send-button ${loading ? 'loading' : ''}`}
+              title="Enviar mensaje (Enter)"
+            >
+              {loading ? (
+                <div className="loading-spinner"></div>
+              ) : (
+                <Send size={20} />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Chat;
