@@ -61,10 +61,11 @@ export const AuthProvider = ({ children }) => {
         // Guardar datos en localStorage
         tokenUtils.setToken(token);
         tokenUtils.setUserData(userData);
-        
-        // Actualizar estado
+          // Actualizar estado
         setUser(userData);
         setIsAuthenticated(true);
+        
+        console.log('Usuario logueado:', userData); // Debug
         
         return { success: true, user: userData };
       } else {

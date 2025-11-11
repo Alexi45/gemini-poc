@@ -1,21 +1,130 @@
 const { getUserInstance } = require('../models/User');
-const { getAuthServiceInstance } = require('../services/AuthService');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+// AuthService inline para evitar problemas de importación
+class AuthService {
+  constructor() {
+    const { getDatabaseManager } = require('../database/db');
+    this.db = getDatabaseManager().getDatabase();
+  }
+
+  generateToken(userId, email) {
+    try {
+      const payload = {
+        userId,
+        email,
+        iat: Math.floor(Date.now() / 1000)
+      };
+
+      return jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      });
+    } catch (error) {
+      console.error('Error generando token:', error);
+      throw new Error('Error al generar token de autenticación');
+    }
+  }
+
+  verifyToken(token) {
+    try {
+      return jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      throw new Error('Token inválido o expirado');
+    }
+  }
+
+  async saveSession(userId, token) {
+    try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      return new Promise((resolve, reject) => {
+        this.db.run(`
+          INSERT INTO user_sessions (user_id, session_token, expires_at)
+          VALUES (?, ?, ?)
+        `, [userId, token, expiresAt.toISOString()], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(this.lastID);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error guardando sesión:', error);
+      throw new Error('Error al guardar la sesión');
+    }
+  }
+
+  async getSessionInfo(token) {
+    try {
+      return await this.db.getAsync(`
+        SELECT s.user_id, s.expires_at, u.email
+        FROM user_sessions s
+        INNER JOIN users u ON s.user_id = u.id
+        WHERE s.session_token = ? AND s.expires_at > datetime('now')
+      `, [token]);
+    } catch (error) {
+      console.error('Error obteniendo información de sesión:', error);
+      return null;
+    }
+  }
+
+  async invalidateSession(token) {
+    try {
+      const result = await this.db.runAsync('DELETE FROM user_sessions WHERE session_token = ?', [token]);
+      return result.changes > 0;
+    } catch (error) {
+      console.error('Error invalidando sesión:', error);
+      return false;
+    }
+  }
+
+  async generatePasswordResetToken(userId) {
+    try {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1);
+
+      await this.db.runAsync('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
+
+      return new Promise((resolve, reject) => {
+        this.db.run(`
+          INSERT INTO password_reset_tokens (user_id, token, expires_at)
+          VALUES (?, ?, ?)
+        `, [userId, token, expiresAt.toISOString()], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(token);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error generando token de recuperación:', error);
+      throw new Error('Error al generar el token de recuperación');
+    }
+  }
+}
+
+function getAuthServiceInstance() {
+  return new AuthService();
+}
 
 const authController = {
   // Registro de usuario
   async register(req, res) {
     try {
       const { email, password, confirmPassword } = req.body;
+      const userModel = getUserInstance();
 
       // Validar campos requeridos
       if (!email || !password) {
         return res.status(400).json({
           success: false,
-          message: 'Email y contraseña son obligatorios'
-        });
+          message: 'Email y contraseña son obligatorios'        });
       }
-
-      const userModel = getUserInstance();
 
       // Validar formato del email
       if (!userModel.validateEmail(email)) {

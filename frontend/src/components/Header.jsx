@@ -7,16 +7,38 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // Debug: verificar datos del usuario
+  console.log('Header user data:', user);
+
   const handleLogout = async () => {
     try {
       await logout();
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
+  };  const getInitials = (email) => {
+    if (!email) return 'U';
+    const name = email.split('@')[0];
+    return name.charAt(0).toUpperCase();
   };
 
-  const getInitials = (firstName, lastName) => {
-    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+  const getDisplayName = (email) => {
+    if (!email) return 'Usuario';
+    return email.split('@')[0];
+  };
+
+  const getAvatarColor = (email) => {
+    if (!email) return '#3b82f6';
+    
+    // Generar un color basado en el email
+    let hash = 0;
+    for (let i = 0; i < email.length; i++) {
+      hash = email.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Convertir el hash a un color HSL
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 55%)`;
   };
 
   return (
@@ -37,17 +59,19 @@ const Header = () => {
               className="user-dropdown"
               onClick={() => setDropdownOpen(!dropdownOpen)}
             >
-              <div className="user-info">
-                <div className="user-avatar">
+              <div className="user-info">                <div className="user-avatar" style={{ background: getAvatarColor(user?.email) }}>
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.username} />
+                    <img src={user.avatar} alt={getDisplayName(user.email)} />
                   ) : (
-                    <span>{getInitials(user?.firstName, user?.lastName)}</span>
+                    <span>{getInitials(user?.email)}</span>
                   )}
                 </div>
                 <div className="user-details">
                   <span className="user-name">
-                    {user?.firstName} {user?.lastName}
+                    {getDisplayName(user?.email)}
+                  </span>
+                  <span className="user-email">
+                    {user?.email}
                   </span>
                   <span className="user-username">@{user?.username}</span>
                 </div>

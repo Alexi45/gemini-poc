@@ -1,5 +1,40 @@
-const { getAuthServiceInstance } = require('../services/AuthService');
 const { getUserInstance } = require('../models/User');
+const jwt = require('jsonwebtoken');
+
+// AuthService inline para evitar problemas de importación
+class AuthService {
+  constructor() {
+    const { getDatabaseManager } = require('../database/db');
+    this.db = getDatabaseManager().getDatabase();
+  }
+
+  verifyToken(token) {
+    try {
+      return jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      throw new Error('Token inválido o expirado');
+    }
+  }
+
+  async isValidSession(token) {
+    try {
+      const session = await this.db.getAsync(`
+        SELECT user_id, expires_at 
+        FROM user_sessions 
+        WHERE session_token = ? AND expires_at > datetime('now')
+      `, [token]);
+
+      return session ? session.user_id : null;
+    } catch (error) {
+      console.error('Error verificando sesión:', error);
+      return null;
+    }
+  }
+}
+
+function getAuthServiceInstance() {
+  return new AuthService();
+}
 
 const authMiddleware = async (req, res, next) => {
   try {

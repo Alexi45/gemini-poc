@@ -129,74 +129,33 @@ class DatabaseManager {
     return this.db;
   }
 
-  // Limpieza de sesiones expiradas
-  async cleanExpiredSessions() {
-    try {
-      const result = await this.db.runAsync('DELETE FROM user_sessions WHERE expires_at < datetime("now")');
-      if (result.changes > 0) {
-        console.log(`🧹 Limpiadas ${result.changes} sesiones expiradas`);
-      }
-      return result.changes;
-    } catch (error) {
-      console.error('Error limpiando sesiones expiradas:', error);
-      throw error;
+// Limpieza de sesiones expiradas
+async cleanExpiredSessions() {
+  try {
+    const result = await this.db.runAsync('DELETE FROM user_sessions WHERE expires_at < datetime("now")');
+    if (result && result.changes > 0) {
+      console.log(`🧹 Limpiadas ${result.changes} sesiones expiradas`);
     }
-<<<<<<< Updated upstream
+    return result ? result.changes : 0;
+  } catch (error) {
+    console.error('Error limpiando sesiones expiradas:', error);
+    throw error;
   }
+}
 
   // Limpieza de tokens de recuperación expirados
   async cleanExpiredResetTokens() {
     try {
       const result = await this.db.runAsync('DELETE FROM password_reset_tokens WHERE expires_at < datetime("now") OR used = 1');
-      if (result.changes > 0) {
+      if (result && result.changes > 0) {
         console.log(`🧹 Limpiados ${result.changes} tokens de recuperación expirados`);
       }
-      return result.changes;
+      return result ? result.changes : 0;
     } catch (error) {
       console.error('Error limpiando tokens de recuperación:', error);
       throw error;
     }
   }
-=======
-  });
-  // Crear tabla de chat_history
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chat_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER NOT NULL,
-      message TEXT NOT NULL,
-      response TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
-    )
-  `, (err) => {
-    if (err) {
-      console.error('Error al crear tabla chat_history:', err.message);
-    } else {
-      console.log('✅ Tabla chat_history creada o ya existe');
-    }
-  });
-
-  // Crear tabla de tokens de reseteo de contraseña
-  db.run(`
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER NOT NULL,
-      token VARCHAR(255) NOT NULL UNIQUE,
-      expiresAt DATETIME NOT NULL,
-      isUsed BOOLEAN DEFAULT 0,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
-    )
-  `, (err) => {
-    if (err) {
-      console.error('Error al crear tabla password_reset_tokens:', err.message);
-    } else {
-      console.log('✅ Tabla password_reset_tokens creada o ya existe');
-    }
-  });
-});
->>>>>>> Stashed changes
 
   // Limpieza general de datos expirados
   async cleanup() {

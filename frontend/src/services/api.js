@@ -84,32 +84,53 @@ export const authAPI = {
 
 // Servicios del chat con Gemini
 export const chatAPI = {
-  sendMessage: async (message) => {
-    const response = await api.post('/generate', { message });
+  sendMessage: async (message, conversationId = null) => {
+    console.log('🔗 API: Enviando solicitud a /chat/send');
+    console.log('📝 Mensaje:', message);
+    console.log('🆔 Conversation ID:', conversationId);
+    
+    try {
+      const response = await api.post('/chat/send', { 
+        message,
+        conversationId 
+      });
+      
+      console.log('✅ API: Respuesta exitosa:', response.data);
+      return response.data;
+      
+    } catch (error) {
+      console.error('❌ API Error:', error);
+      console.error('📊 Error response:', error.response?.data);
+      throw error;
+    }
+  },
+  // Obtener historial de chat (conversaciones)
+  getHistory: async (page = 1, limit = 20) => {
+    const response = await api.get(`/chat/conversations?page=${page}&limit=${limit}`);
     return response.data;
   },
 
-  // Obtener historial de chat
-  getHistory: async (limit = 50, offset = 0) => {
-    const response = await api.get(`/chat/history?limit=${limit}&offset=${offset}`);
+  // Obtener conversación específica
+  getConversation: async (conversationId) => {
+    const response = await api.get(`/chat/conversations/${conversationId}`);
     return response.data;
   },
 
   // Buscar en el historial
-  searchHistory: async (searchTerm) => {
-    const response = await api.get(`/chat/history/search?q=${encodeURIComponent(searchTerm)}`);
+  searchHistory: async (searchTerm, page = 1, limit = 50) => {
+    const response = await api.get(`/chat/search?q=${encodeURIComponent(searchTerm)}&page=${page}&limit=${limit}`);
     return response.data;
   },
 
-  // Eliminar mensaje del historial
-  deleteMessage: async (messageId) => {
-    const response = await api.delete(`/chat/history/${messageId}`);
+  // Eliminar conversación
+  deleteConversation: async (conversationId) => {
+    const response = await api.delete(`/chat/conversations/${conversationId}`);
     return response.data;
   },
 
-  // Limpiar todo el historial
-  clearHistory: async () => {
-    const response = await api.delete('/chat/history');
+  // Exportar conversación
+  exportConversation: async (conversationId) => {
+    const response = await api.get(`/chat/conversations/${conversationId}/export`);
     return response.data;
   },
 

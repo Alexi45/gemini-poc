@@ -6,12 +6,9 @@ require('dotenv').config();
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
-<<<<<<< Updated upstream
-=======
 const authMiddleware = require('./middleware/auth');
 const AuthService = require('./services/AuthService');
 const ChatHistory = require('./models/ChatHistory');
->>>>>>> Stashed changes
 
 // Inicializar base de datos
 const { getDatabaseManager } = require('./database/db');
@@ -51,10 +48,6 @@ setInterval(() => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 
-<<<<<<< Updated upstream
-// Ruta de health check
-app.get('/api/health', (req, res) => {
-=======
 // Rutas de chat
 app.use('/api/chat', chatRoutes);
 
@@ -62,7 +55,6 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 // Ruta de prueba para verificar la API
 app.get('/api/test', async (req, res) => {
->>>>>>> Stashed changes
   try {
     const dbManager = getDatabaseManager();
     const stats = dbManager.getStats();
@@ -108,14 +100,6 @@ app.get('/api/test-gemini', async (req, res) => {
       message: 'Gemini AI está funcionando correctamente',
       response: response.text()
     });
-<<<<<<< Updated upstream
-  } catch (error) {
-    console.error('Error probando Gemini:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al conectar con Gemini AI',
-      details: error.message
-=======
 
     if (!response.ok) {
       const text = await response.text();
@@ -159,7 +143,6 @@ app.get('/api/test-gemini', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Error interno del servidor' 
->>>>>>> Stashed changes
     });
   }
 });
@@ -201,5 +184,5 @@ app.listen(port, () => {
   console.log(`🚀 Servidor backend ejecutándose en http://localhost:${port}`);
   console.log(`🔒 Autenticación: Habilitada`);
   console.log(`🤖 Gemini API: ${process.env.GEMINI_API_KEY ? 'Configurada' : 'No configurada'}`);
-  console.log(`📊 Base de datos: SQLite con better-sqlite3`);
+  console.log(`📊 Base de datos: SQLite con sqlite3`);
 });

@@ -1007,6 +1007,12 @@ body {
   font-size: 0.875rem;
 }
 
+.user-email {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
 .user-username {
   font-size: 0.75rem;
   color: var(--text-secondary);

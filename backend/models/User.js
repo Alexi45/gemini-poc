@@ -17,16 +17,24 @@ class User {
       }
 
       // Hashear la contraseña
-      const hashedPassword = await bcrypt.hash(password, this.saltRounds);
-
-      // Insertar el usuario
-      const result = await this.db.runAsync(`
-        INSERT INTO users (email, password, created_at, updated_at)
-        VALUES (?, ?, datetime('now'), datetime('now'))
-      `, [email, hashedPassword]);
+      const hashedPassword = await bcrypt.hash(password, this.saltRounds);      // Insertar el usuario
+      const insertPromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          INSERT INTO users (email, password, created_at, updated_at)
+          VALUES (?, ?, datetime('now'), datetime('now'))
+        `, [email, hashedPassword], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ lastInsertRowid: this.lastID });
+          }
+        });
+      });
       
-      if (result.lastID) {
-        const newUser = await this.db.getAsync('SELECT * FROM users WHERE id = ? AND is_active = 1', [result.lastID]);
+      const result = await insertPromise;
+      
+      if (result && result.lastInsertRowid) {
+        const newUser = await this.db.getAsync('SELECT * FROM users WHERE id = ? AND is_active = 1', [result.lastInsertRowid]);
         // Remover la contraseña del objeto retornado
         delete newUser.password;
         return newUser;

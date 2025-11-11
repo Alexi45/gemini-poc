@@ -11,16 +11,25 @@ class ChatHistory {
     try {
       if (!['user', 'assistant'].includes(messageType)) {
         throw new Error('Tipo de mensaje inválido');
-      }
-
-      const metadataString = metadata ? JSON.stringify(metadata) : null;
-      const result = await this.db.runAsync(`
-        INSERT INTO chat_history (user_id, conversation_id, message_type, content, timestamp, metadata)
-        VALUES (?, ?, ?, ?, datetime('now'), ?)
-      `, [userId, conversationId, messageType, content, metadataString]);
+      }      const metadataString = metadata ? JSON.stringify(metadata) : null;
+      
+      const insertPromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          INSERT INTO chat_history (user_id, conversation_id, message_type, content, timestamp, metadata)
+          VALUES (?, ?, ?, ?, datetime('now'), ?)
+        `, [userId, conversationId, messageType, content, metadataString], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ lastInsertRowid: this.lastID });
+          }
+        });
+      });
+      
+      const result = await insertPromise;
 
       return {
-        id: result.lastID,
+        id: result.lastInsertRowid,
         userId,
         conversationId,
         messageType,
@@ -209,6 +218,21 @@ class ChatHistory {
       };
     } catch (error) {
       console.error('Error en ChatHistory.getUserStats:', error);
+      throw error;
+    }  }
+
+  // Obtener total de mensajes del usuario
+  async getTotalUserMessages(userId) {
+    try {
+      const result = await this.db.getAsync(`
+        SELECT COUNT(*) as total 
+        FROM chat_history 
+        WHERE user_id = ?
+      `, [userId]);
+      
+      return result ? result.total : 0;
+    } catch (error) {
+      console.error('Error en ChatHistory.getTotalUserMessages:', error);
       throw error;
     }
   }

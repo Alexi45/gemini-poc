@@ -31,11 +31,7 @@ const registerLimiter = rateLimit({
 // Rutas públicas (sin autenticación)
 router.post('/register', registerLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
-<<<<<<< Updated upstream
-router.post('/forgot-password', authLimiter, authController.forgotPassword);
-=======
 router.post('/request-password-reset', authLimiter, authController.requestPasswordReset);
->>>>>>> Stashed changes
 router.post('/reset-password', authLimiter, authController.resetPassword);
 
 // Rutas protegidas (requieren autenticación)

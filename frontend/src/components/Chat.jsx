@@ -9,6 +9,7 @@ const Chat = () => {
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connected');
@@ -58,17 +59,26 @@ const Chat = () => {
     setIsTyping(true);
     
     const currentInput = input;
-    setInput('');
-
-    try {
-      const response = await chatAPI.sendMessage(currentInput);
+    setInput('');    try {
+      console.log('🚀 Enviando mensaje:', currentInput);
+      console.log('🆔 Conversation ID:', currentConversationId);
+      
+      const response = await chatAPI.sendMessage(currentInput, currentConversationId);
+      
+      console.log('📨 Respuesta del servidor:', response);
       
       setIsTyping(false);
       
       if (response.success) {
+        // Guardar el conversation ID si es nuevo
+        if (!currentConversationId) {
+          console.log('💾 Guardando nuevo conversation ID:', response.data.conversationId);
+          setCurrentConversationId(response.data.conversationId);
+        }
+        
         const assistantMessage = {
           role: 'assistant',
-          text: response.message,
+          text: response.data.message,
           timestamp: new Date(),
           id: Date.now() + 1
         };
@@ -76,7 +86,7 @@ const Chat = () => {
         setMessages(prev => [...prev, assistantMessage]);
         setConnectionStatus('connected');
       } else {
-        throw new Error(response.error || 'Error desconocido');
+        throw new Error(response.message || 'Error desconocido');
       }
     } catch (error) {
       console.error('Error:', error);
