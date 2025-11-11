@@ -1,0 +1,19 @@
+{
+  "name": "gemini-poc",
+  "version": "1.0.0",
+  "description": "Prueba de concepto para integrar API de Gemini/LLM con React + Node.js",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "start:backend": "cd backend && npm start",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/gemini-poc.git"
+  },
+  "keywords": ["gemini", "llm", "react", "nodejs", "chat", "ai"],
+  "author": "Tu Nombre",
+  "license": "MIT"
+}
