@@ -8,7 +8,6 @@ import Register from './components/Register';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import Chat from './components/Chat';
-import NotFound from './components/NotFound';
 import './styles.css';
 
 function App() {

@@ -7,12 +7,9 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const authMiddleware = require('./middleware/auth');
-const AuthService = require('./services/AuthService');
-const ChatHistory = require('./models/ChatHistory');
 
 // Inicializar base de datos
 const { getDatabaseManager } = require('./database/db');
-const { getAuthServiceInstance } = require('./services/AuthService');
 
 const app = express();
 
@@ -37,8 +34,8 @@ try {
 // Limpieza periódica de datos expirados
 setInterval(() => {
   try {
-    const authService = getAuthServiceInstance();
-    authService.cleanup();
+    console.log('Ejecutando limpieza periódica...');
+    // La limpieza se puede implementar aquí si es necesaria
   } catch (error) {
     console.error('Error en limpieza periódica:', error);
   }

@@ -2138,3 +2138,84 @@ body {
     margin-top: 8px;
   }
 }
+
+/* Tamaños de texto adaptativos para mensajes */
+.message.text-normal .message-text {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.message.text-medium .message-text {
+  font-size: 0.925rem;
+  line-height: 1.55;
+}
+
+.message.text-small .message-text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Estilo para párrafos en mensajes largos */
+.message-paragraph {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.message-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* Indicador de longitud del mensaje */
+.message-length-indicator {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 8px;
+}
+
+/* Mejoras en el scroll de mensajes largos */
+.message.text-small .message-text::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message.text-small .message-text::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.message.text-small .message-text::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 3px;
+}
+
+.message.text-small .message-text::-webkit-scrollbar-thumb:hover {
+  background: var(--border-primary);
+}
+
+/* Animación suave para el cambio de tamaño */
+.message-text {
+  transition: all 0.3s ease;
+}
+
+/* Mejoras en espaciado para mensajes largos */
+.message.text-small {
+  margin-bottom: 20px;
+}
+
+.message.text-medium {
+  margin-bottom: 18px;
+}
+
+.message.text-normal {
+  margin-bottom: 16px;
+}
+
+/* Estilo especial para el scroll automático al inicio del mensaje de IA */
+.message.assistant.text-small .message-text,
+.message.assistant.text-medium .message-text {
+  scroll-margin-top: 80px;
+}

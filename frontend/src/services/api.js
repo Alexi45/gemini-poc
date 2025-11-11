@@ -85,24 +85,11 @@ export const authAPI = {
 // Servicios del chat con Gemini
 export const chatAPI = {
   sendMessage: async (message, conversationId = null) => {
-    console.log('🔗 API: Enviando solicitud a /chat/send');
-    console.log('📝 Mensaje:', message);
-    console.log('🆔 Conversation ID:', conversationId);
-    
-    try {
-      const response = await api.post('/chat/send', { 
-        message,
-        conversationId 
-      });
-      
-      console.log('✅ API: Respuesta exitosa:', response.data);
-      return response.data;
-      
-    } catch (error) {
-      console.error('❌ API Error:', error);
-      console.error('📊 Error response:', error.response?.data);
-      throw error;
-    }
+    const response = await api.post('/chat/send', { 
+      message,
+      conversationId 
+    });
+    return response.data;
   },
   // Obtener historial de chat (conversaciones)
   getHistory: async (page = 1, limit = 20) => {

@@ -13,13 +13,33 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connected');
-  const [messageCount, setMessageCount] = useState(0);
-  const [showHistory, setShowHistory] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);  const [showHistory, setShowHistory] = useState(false);
   const chatEndRef = useRef(null);
-
-  // Auto scroll to bottom when messages change
+  const lastMessageRef = useRef(null);
+  // Auto scroll to bottom when messages change or to last AI message if it's long
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      // Si el último mensaje es de la IA y es largo, hacer scroll al inicio del mensaje
+      if (lastMessage.role === 'assistant' && lastMessage.text.length > 200) {
+        setTimeout(() => {
+          lastMessageRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }, 150);
+      } else {
+        // Scroll normal al final del chat para mensajes cortos
+        setTimeout(() => {
+          chatEndRef.current?.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'end'
+          });
+        }, 100);
+      }
+    }
   }, [messages, loading, isTyping]);
 
   // Check backend connection on mount
@@ -35,12 +55,44 @@ const Chat = () => {
       setConnectionStatus('disconnected');
     }
   };
-
   const formatTime = (date) => {
     return date.toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Función para determinar el tamaño del texto basado en la longitud
+  const getMessageTextSize = (text) => {
+    if (text.length > 500) return 'text-small';
+    if (text.length > 200) return 'text-medium';
+    return 'text-normal';
+  };
+  // Función para formatear texto largo con saltos de línea
+  const formatMessageText = (text) => {
+    // Dividir por párrafos si hay doble salto de línea
+    const paragraphs = text.split(/\n\s*\n/);
+    
+    if (paragraphs.length > 1) {
+      return paragraphs.map((paragraph, index) => (
+        <div key={index} className="message-paragraph">
+          {paragraph.trim().split('\n').map((line, lineIndex) => (
+            <span key={lineIndex}>
+              {line}
+              {lineIndex < paragraph.trim().split('\n').length - 1 && <br />}
+            </span>
+          ))}
+        </div>
+      ));
+    }
+    
+    // Si no hay párrafos, simplemente mostrar el texto con saltos de línea simples
+    return text.split('\n').map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < text.split('\n').length - 1 && <br />}
+      </span>
+    ));
   };
 
   const handleSend = async () => {
@@ -60,19 +112,13 @@ const Chat = () => {
     
     const currentInput = input;
     setInput('');    try {
-      console.log('🚀 Enviando mensaje:', currentInput);
-      console.log('🆔 Conversation ID:', currentConversationId);
-      
       const response = await chatAPI.sendMessage(currentInput, currentConversationId);
-      
-      console.log('📨 Respuesta del servidor:', response);
       
       setIsTyping(false);
       
       if (response.success) {
         // Guardar el conversation ID si es nuevo
         if (!currentConversationId) {
-          console.log('💾 Guardando nuevo conversation ID:', response.data.conversationId);
           setCurrentConversationId(response.data.conversationId);
         }
         
@@ -231,10 +277,12 @@ const Chat = () => {
                 </div>
               </div>
             </div>
-          )}
-
-          {messages.map((message) => (
-            <div key={message.id} className={`message ${message.role} ${message.error ? 'error' : ''}`}>
+          )}          {messages.map((message, index) => (
+            <div 
+              key={message.id} 
+              className={`message ${message.role} ${message.error ? 'error' : ''} ${getMessageTextSize(message.text)}`}
+              ref={index === messages.length - 1 ? lastMessageRef : null}
+            >
               <div className="message-avatar">
                 {message.role === 'user' ? (
                   <div className="user-avatar">
@@ -255,8 +303,16 @@ const Chat = () => {
                     <Clock size={12} />
                     {formatTime(message.timestamp)}
                   </span>
+                  {/* Indicador de mensaje largo */}
+                  {message.text.length > 200 && (
+                    <span className="message-length-indicator">
+                      {message.text.length} caracteres
+                    </span>
+                  )}
                 </div>
-                <div className="message-text">{message.text}</div>
+                <div className="message-text">
+                  {formatMessageText(message.text)}
+                </div>
               </div>
             </div>
           ))}
