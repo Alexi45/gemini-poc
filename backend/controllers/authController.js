@@ -292,6 +292,109 @@ const authController = {
         message: 'Token inválido'
       });
     }
+  },
+
+  // Solicitar reseteo de contraseña
+  async requestPasswordReset(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email es obligatorio'
+        });
+      }
+
+      // Verificar si el usuario existe
+      const user = await User.findByEmail(email);
+      if (!user) {
+        // Por seguridad, siempre devolvemos éxito aunque el email no exista
+        return res.json({
+          success: true,
+          message: 'Si el email existe en nuestro sistema, recibirás instrucciones para resetear tu contraseña'
+        });
+      }
+
+      // Generar token de reseteo (en un sistema real, esto sería enviado por email)
+      const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const resetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+      // Guardar token en la base de datos
+      await AuthService.savePasswordResetToken(user.id, resetToken, resetExpiry);
+
+      // En un sistema real, aquí enviarías un email con el token
+      // Por ahora, lo devolvemos en la respuesta (solo para desarrollo)
+      res.json({
+        success: true,
+        message: 'Si el email existe en nuestro sistema, recibirás instrucciones para resetear tu contraseña',
+        // Solo en desarrollo - en producción esto iría por email
+        resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      });
+    } catch (error) {
+      console.error('Error en solicitud de reseteo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor durante la solicitud de reseteo'
+      });
+    }
+  },
+
+  // Resetear contraseña con token
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword, confirmPassword } = req.body;
+
+      if (!token || !newPassword || !confirmPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token y contraseñas son obligatorios'
+        });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Las contraseñas no coinciden'
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'La contraseña debe tener al menos 6 caracteres'
+        });
+      }
+
+      // Verificar token de reseteo
+      const resetData = await AuthService.verifyPasswordResetToken(token);
+      if (!resetData) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token de reseteo inválido o expirado'
+        });
+      }
+
+      // Hashear nueva contraseña
+      const hashedPassword = await User.hashPassword(newPassword);
+
+      // Actualizar contraseña del usuario
+      await User.updatePassword(resetData.userId, hashedPassword);
+
+      // Invalidar el token de reseteo
+      await AuthService.invalidatePasswordResetToken(token);
+
+      res.json({
+        success: true,
+        message: 'Contraseña actualizada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.'
+      });
+    } catch (error) {
+      console.error('Error en reseteo de contraseña:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor durante el reseteo de contraseña'
+      });
+    }
   }
 };
 

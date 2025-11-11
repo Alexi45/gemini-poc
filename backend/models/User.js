@@ -191,6 +191,22 @@ class User {
       throw error;
     }
   }
+
+  static async updatePassword(userId, hashedPassword) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE users SET password = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
+        [hashedPassword, userId],
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
 }
 
 // Instancia singleton

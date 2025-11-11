@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ThemeSelector from './ThemeSelector';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -28,48 +29,52 @@ const Header = () => {
           </div>
         </div>
 
-        <div className="header-user">
-          <div 
-            className="user-dropdown"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-          >
-            <div className="user-info">
-              <div className="user-avatar">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.username} />
-                ) : (
-                  <span>{getInitials(user?.firstName, user?.lastName)}</span>
-                )}
+        <div className="header-actions">
+          <ThemeSelector />
+          
+          <div className="header-user">
+            <div 
+              className="user-dropdown"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+            >
+              <div className="user-info">
+                <div className="user-avatar">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.username} />
+                  ) : (
+                    <span>{getInitials(user?.firstName, user?.lastName)}</span>
+                  )}
+                </div>
+                <div className="user-details">
+                  <span className="user-name">
+                    {user?.firstName} {user?.lastName}
+                  </span>
+                  <span className="user-username">@{user?.username}</span>
+                </div>
+                <ChevronDown 
+                  size={16} 
+                  className={`dropdown-icon ${dropdownOpen ? 'open' : ''}`} 
+                />
               </div>
-              <div className="user-details">
-                <span className="user-name">
-                  {user?.firstName} {user?.lastName}
-                </span>
-                <span className="user-username">@{user?.username}</span>
-              </div>
-              <ChevronDown 
-                size={16} 
-                className={`dropdown-icon ${dropdownOpen ? 'open' : ''}`} 
-              />
-            </div>
 
-            {dropdownOpen && (
-              <div className="dropdown-menu">
-                <div className="dropdown-item">
-                  <User size={18} />
-                  <span>Perfil</span>
+              {dropdownOpen && (
+                <div className="dropdown-menu">
+                  <div className="dropdown-item">
+                    <User size={18} />
+                    <span>Perfil</span>
+                  </div>
+                  <div className="dropdown-item">
+                    <Settings size={18} />
+                    <span>Configuración</span>
+                  </div>
+                  <div className="dropdown-divider"></div>
+                  <div className="dropdown-item logout" onClick={handleLogout}>
+                    <LogOut size={18} />
+                    <span>Cerrar Sesión</span>
+                  </div>
                 </div>
-                <div className="dropdown-item">
-                  <Settings size={18} />
-                  <span>Configuración</span>
-                </div>
-                <div className="dropdown-divider"></div>
-                <div className="dropdown-item logout" onClick={handleLogout}>
-                  <LogOut size={18} />
-                  <span>Cerrar Sesión</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

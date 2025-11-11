@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap } from 'lucide-react';
+import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { chatAPI } from '../services/api';
 import Header from './Header';
+import ChatHistory from './ChatHistory';
 
 const Chat = () => {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connected');
   const [messageCount, setMessageCount] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
   const chatEndRef = useRef(null);
 
   // Auto scroll to bottom when messages change
@@ -105,6 +107,34 @@ const Chat = () => {
     setMessageCount(0);
   };
 
+  // Cargar historial desde el modal de historial
+  const handleLoadHistory = async () => {
+    try {
+      const response = await chatAPI.getHistory(50);
+      if (response.success) {
+        setMessages(response.data.history);
+        setMessageCount(response.data.history.filter(msg => msg.role === 'user').length);
+      }
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+    }
+  };
+
+  // Función para cargar conversación específica desde historial
+  const handleLoadConversation = (conversationData) => {
+    // Esta función será llamada desde ChatHistory component
+    // Por ahora, simplemente añade el mensaje al chat actual
+    const newMessage = {
+      role: 'user',
+      text: conversationData.text,
+      timestamp: conversationData.timestamp,
+      id: Date.now()
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    setMessageCount(prev => prev + 1);
+  };
+
   const getStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -140,10 +170,18 @@ const Chat = () => {
           <div className="status-info">
             {getStatusIcon()}
             <span>{getStatusText()}</span>
-          </div>
-          <div className="chat-stats">
+          </div>          <div className="chat-stats">
             <MessageCircle size={16} />
             <span>{messageCount} mensajes</span>
+            
+            <button 
+              onClick={() => setShowHistory(true)} 
+              className="history-btn" 
+              title="Ver historial"
+            >
+              <History size={16} />
+            </button>
+            
             {messageCount > 0 && (
               <button onClick={clearChat} className="clear-btn" title="Limpiar chat">
                 <RotateCcw size={16} />
@@ -270,10 +308,16 @@ const Chat = () => {
               ) : (
                 <Send size={20} />
               )}
-            </button>
-          </div>
+            </button>          </div>
         </div>
       </div>
+
+      {/* Modal de historial */}
+      <ChatHistory 
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        onLoadHistory={handleLoadConversation}
+      />
     </div>
   );
 };

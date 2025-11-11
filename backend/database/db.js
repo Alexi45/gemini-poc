@@ -141,6 +141,7 @@ class DatabaseManager {
       console.error('Error limpiando sesiones expiradas:', error);
       throw error;
     }
+<<<<<<< Updated upstream
   }
 
   // Limpieza de tokens de recuperación expirados
@@ -156,6 +157,46 @@ class DatabaseManager {
       throw error;
     }
   }
+=======
+  });
+  // Crear tabla de chat_history
+  db.run(`
+    CREATE TABLE IF NOT EXISTS chat_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      response TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error al crear tabla chat_history:', err.message);
+    } else {
+      console.log('✅ Tabla chat_history creada o ya existe');
+    }
+  });
+
+  // Crear tabla de tokens de reseteo de contraseña
+  db.run(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      token VARCHAR(255) NOT NULL UNIQUE,
+      expiresAt DATETIME NOT NULL,
+      isUsed BOOLEAN DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error al crear tabla password_reset_tokens:', err.message);
+    } else {
+      console.log('✅ Tabla password_reset_tokens creada o ya existe');
+    }
+  });
+});
+>>>>>>> Stashed changes
 
   // Limpieza general de datos expirados
   async cleanup() {

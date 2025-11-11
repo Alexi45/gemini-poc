@@ -65,6 +65,20 @@ export const authAPI = {
   verifyToken: async () => {
     const response = await api.get('/auth/verify');
     return response.data;
+  },
+
+  requestPasswordReset: async (email) => {
+    const response = await api.post('/auth/request-password-reset', { email });
+    return response.data;
+  },
+
+  resetPassword: async (token, newPassword, confirmPassword) => {
+    const response = await api.post('/auth/reset-password', { 
+      token, 
+      newPassword, 
+      confirmPassword 
+    });
+    return response.data;
   }
 };
 
@@ -72,6 +86,36 @@ export const authAPI = {
 export const chatAPI = {
   sendMessage: async (message) => {
     const response = await api.post('/generate', { message });
+    return response.data;
+  },
+
+  // Obtener historial de chat
+  getHistory: async (limit = 50, offset = 0) => {
+    const response = await api.get(`/chat/history?limit=${limit}&offset=${offset}`);
+    return response.data;
+  },
+
+  // Buscar en el historial
+  searchHistory: async (searchTerm) => {
+    const response = await api.get(`/chat/history/search?q=${encodeURIComponent(searchTerm)}`);
+    return response.data;
+  },
+
+  // Eliminar mensaje del historial
+  deleteMessage: async (messageId) => {
+    const response = await api.delete(`/chat/history/${messageId}`);
+    return response.data;
+  },
+
+  // Limpiar todo el historial
+  clearHistory: async () => {
+    const response = await api.delete('/chat/history');
+    return response.data;
+  },
+
+  // Obtener estadísticas del chat
+  getStats: async () => {
+    const response = await api.get('/chat/stats');
     return response.data;
   }
 };

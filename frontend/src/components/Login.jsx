@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ForgotPassword from './ForgotPassword';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -47,6 +49,11 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Si se está mostrando ForgotPassword, renderizar ese componente
+  if (showForgotPassword) {
+    return <ForgotPassword onBackToLogin={() => setShowForgotPassword(false)} />;
+  }
 
   return (
     <div className="auth-container">
@@ -126,7 +133,15 @@ const Login = () => {
               </>
             )}
           </button>
-        </form>
+        </form>        <div className="auth-links">
+          <button
+            type="button"
+            className="forgot-password-link"
+            onClick={() => setShowForgotPassword(true)}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
 
         <div className="auth-footer">
           <p>

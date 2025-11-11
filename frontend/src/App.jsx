@@ -8,6 +8,7 @@ import Register from './components/Register';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import Chat from './components/Chat';
+import ResetPassword from './components/ResetPassword';
 import './styles.css';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Router>
           <div className="app">
             <Routes>
+<<<<<<< Updated upstream
               {/* Redirigir la raíz al chat */}
               <Route 
                 path="/" 
@@ -49,6 +51,38 @@ function App() {
         </Router>
       </AuthProvider>
     </ThemeProvider>
+=======
+            {/* Redirigir la raíz al chat */}
+            <Route 
+              path="/" 
+              element={<Navigate to="/chat" replace />} 
+            />
+            
+            {/* Rutas públicas */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* Rutas protegidas */}
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Ruta 404 */}
+            <Route 
+              path="*" 
+              element={<Navigate to="/chat" replace />} 
+            />          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  </ThemeProvider>
+>>>>>>> Stashed changes
   );
 }
 

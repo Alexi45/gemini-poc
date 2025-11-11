@@ -174,6 +174,84 @@ class AuthService {
       console.error('Error en limpieza de AuthService:', error);
     }
   }
+
+  // Métodos para manejo de tokens de reseteo de contraseña
+  static async savePasswordResetToken(userId, token, expiresAt) {
+    return new Promise((resolve, reject) => {
+      // Primero invalidamos cualquier token existente para este usuario
+      db.run(
+        `UPDATE password_reset_tokens SET isUsed = 1 WHERE userId = ? AND isUsed = 0`,
+        [userId],
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Luego insertamos el nuevo token
+          db.run(
+            `INSERT INTO password_reset_tokens (userId, token, expiresAt) VALUES (?, ?, ?)`,
+            [userId, token, expiresAt.toISOString()],
+            function(err) {
+              if (err) {
+                reject(err);
+              } else {
+                resolve(this.lastID);
+              }
+            }
+          );
+        }
+      );
+    });
+  }
+
+  static async verifyPasswordResetToken(token) {
+    return new Promise((resolve, reject) => {
+      db.get(
+        `SELECT userId, token FROM password_reset_tokens 
+         WHERE token = ? AND isUsed = 0 AND expiresAt > datetime('now')`,
+        [token],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        }
+      );
+    });
+  }
+
+  static async invalidatePasswordResetToken(token) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE password_reset_tokens SET isUsed = 1 WHERE token = ?`,
+        [token],
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static async cleanExpiredResetTokens() {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `DELETE FROM password_reset_tokens WHERE expiresAt < datetime('now') OR isUsed = 1`,
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
 }
 
 // Instancia singleton

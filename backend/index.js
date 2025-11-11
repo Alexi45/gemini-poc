@@ -6,6 +6,12 @@ require('dotenv').config();
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
+<<<<<<< Updated upstream
+=======
+const authMiddleware = require('./middleware/auth');
+const AuthService = require('./services/AuthService');
+const ChatHistory = require('./models/ChatHistory');
+>>>>>>> Stashed changes
 
 // Inicializar base de datos
 const { getDatabaseManager } = require('./database/db');
@@ -45,8 +51,18 @@ setInterval(() => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 
+<<<<<<< Updated upstream
 // Ruta de health check
 app.get('/api/health', (req, res) => {
+=======
+// Rutas de chat
+app.use('/api/chat', chatRoutes);
+
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+// Ruta de prueba para verificar la API
+app.get('/api/test', async (req, res) => {
+>>>>>>> Stashed changes
   try {
     const dbManager = getDatabaseManager();
     const stats = dbManager.getStats();
@@ -92,12 +108,58 @@ app.get('/api/test-gemini', async (req, res) => {
       message: 'Gemini AI está funcionando correctamente',
       response: response.text()
     });
+<<<<<<< Updated upstream
   } catch (error) {
     console.error('Error probando Gemini:', error);
     res.status(500).json({
       success: false,
       error: 'Error al conectar con Gemini AI',
       details: error.message
+=======
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Gemini API error:', text);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Error de API de Gemini', 
+        details: text 
+      });
+    }
+
+    const data = await response.json();
+    console.log('✅ Respuesta de Gemini recibida');
+    
+    const assistantMessage = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!assistantMessage) {
+      console.error('No message in response:', data);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Sin respuesta de Gemini', 
+        details: data 
+      });
+    }
+      // Guardar historial de chat en la base de datos
+    try {
+      await ChatHistory.saveMessage(user.id, message, assistantMessage);
+      console.log('💾 Historial guardado correctamente');
+    } catch (historyError) {
+      console.error('Error guardando historial:', historyError);
+      // No fallar la respuesta por error de historial
+    }
+    
+    res.json({ 
+      success: true, 
+      message: assistantMessage,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Error en /api/generate:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor' 
+>>>>>>> Stashed changes
     });
   }
 });
