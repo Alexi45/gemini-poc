@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap, History } from 'lucide-react';
+import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap, History, Menu, Maximize, BarChart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { chatAPI } from '../services/api';
 import Header from './Header';
 import ChatHistory from './ChatHistory';
+import ConversationSidebar from './ConversationSidebar';
+import StatsModal from './StatsModal';
 
 const Chat = () => {
   const { user } = useAuth();
@@ -12,8 +14,10 @@ const Chat = () => {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('connected');
-  const [messageCount, setMessageCount] = useState(0);  const [showHistory, setShowHistory] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connected');  const [messageCount, setMessageCount] = useState(0);  const [showHistory, setShowHistory] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const chatEndRef = useRef(null);
   const lastMessageRef = useRef(null);
   // Auto scroll to bottom when messages change or to last AI message if it's long
@@ -41,11 +45,66 @@ const Chat = () => {
       }
     }
   }, [messages, loading, isTyping]);
-
   // Check backend connection on mount
   useEffect(() => {
     checkConnection();
   }, []);
+
+  // Sistema de atajos de teclado mejorado
+  useEffect(() => {
+    const handleKeydown = (e) => {
+      // Solo activar si no estamos escribiendo en un input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Atajos con Ctrl
+      if (e.ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            setSidebarOpen(!sidebarOpen);
+            break;
+          case 'n':
+            e.preventDefault();
+            handleNewConversation();
+            break;
+          case 'f':
+            e.preventDefault();
+            handleToggleFullscreen();
+            break;
+          case 's':
+            e.preventDefault();
+            setShowStats(true);
+            break;
+          case 'h':
+            e.preventDefault();
+            setShowHistory(true);
+            break;
+          case 'l':
+            e.preventDefault();
+            clearChat();
+            break;
+        }
+      }
+
+      // Escape para cerrar modales
+      if (e.key === 'Escape') {
+        if (showStats) setShowStats(false);
+        if (showHistory) setShowHistory(false);
+        if (sidebarOpen) setSidebarOpen(false);
+      }
+
+      // Focus en input con '/'
+      if (e.key === '/' && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        document.querySelector('.message-input')?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeydown);
+    return () => document.removeEventListener('keydown', handleKeydown);
+  }, [sidebarOpen, showStats, showHistory]);
 
   const checkConnection = async () => {
     try {
@@ -191,6 +250,55 @@ const Chat = () => {
     setMessageCount(prev => prev + 1);
   };
 
+  // Funciones para manejar el sidebar y conversaciones - FASE 2
+  const handleNewConversation = () => {
+    setMessages([]);
+    setCurrentConversationId(null);
+    setMessageCount(0);
+    setInput('');
+  };
+
+  const handleConversationSelect = async (conversation) => {
+    try {
+      setLoading(true);
+      const response = await chatAPI.getConversation(conversation.id);
+      if (response.success) {
+        setCurrentConversationId(conversation.id);
+        setMessages(response.data.messages || []);
+        setMessageCount(response.data.messages?.filter(msg => msg.role === 'user').length || 0);
+        setSidebarOpen(false); // Cerrar sidebar en móvil
+      }
+    } catch (error) {
+      console.error('Error cargando conversación:', error);
+    } finally {
+      setLoading(false);
+    }  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log('Error entering fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().catch(err => {
+        console.log('Error exiting fullscreen:', err);
+      });
+    }
+    setFullscreen(!fullscreen);
+  };
+
+  const handleToggleSidebar = () => {
+    toggleSidebar();
+  };
+
+  const handleToggleFullscreen = () => {
+    toggleFullscreen();
+  };
+
   const getStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -216,30 +324,58 @@ const Chat = () => {
         return 'Verificando...';
     }
   };
-
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${fullscreen ? 'fullscreen' : ''}`}>
       <Header />
       
-      <div className="chat-content">
+      {/* Sidebar de conversaciones */}
+      <ConversationSidebar
+        isOpen={sidebarOpen}
+        onToggle={handleToggleSidebar}
+        currentConversationId={currentConversationId}
+        onConversationSelect={handleConversationSelect}
+        onNewConversation={handleNewConversation}
+      />
+      
+      <div className={`chat-content ${sidebarOpen ? 'with-sidebar' : ''}`}>
         <div className="status-bar">
-          <div className="status-info">
+          <div className="status-info">            <button 
+              onClick={handleToggleSidebar}
+              className="sidebar-toggle-btn btn-wave"
+              title="Abrir/cerrar conversaciones"
+            >
+              <Menu size={16} />
+            </button>
             {getStatusIcon()}
             <span>{getStatusText()}</span>
-          </div>          <div className="chat-stats">
+          </div>
+          
+          <div className="chat-stats">
             <MessageCircle size={16} />
             <span>{messageCount} mensajes</span>
-            
-            <button 
+              <button 
+              onClick={handleToggleFullscreen} 
+              className="fullscreen-btn btn-wave" 
+              title="Modo pantalla completa"
+            >
+              <Maximize size={16} />
+            </button>              <button 
               onClick={() => setShowHistory(true)} 
-              className="history-btn" 
+              className="history-btn btn-wave" 
               title="Ver historial"
             >
               <History size={16} />
             </button>
+              <button 
+              onClick={() => setShowStats(true)} 
+              className="stats-btn btn-wave" 
+              title="Ver estadísticas"
+            >
+              <BarChart size={16} />
+            </button>
             
             {messageCount > 0 && (
-              <button onClick={clearChat} className="clear-btn" title="Limpiar chat">
+              <button onClick={clearChat} className="clear-btn btn-wave" title="Limpiar chat">
                 <RotateCcw size={16} />
               </button>
             )}
@@ -247,12 +383,11 @@ const Chat = () => {
         </div>
 
         <div className="messages-container">
-          {messages.length === 0 && (
-            <div className="welcome-message">
+          {messages.length === 0 && (            <div className="welcome-message">
               <div className="welcome-icon">
                 <Sparkles size={48} />
               </div>
-              <h2>¡Hola, {user?.firstName}! 👋</h2>
+              <h2 className="gradient-text">¡Hola, {user?.firstName}! 👋</h2>
               <p>Soy Gemini AI, tu asistente inteligente. ¿En qué puedo ayudarte hoy?</p>
               
               <div className="quick-actions">
@@ -331,8 +466,7 @@ const Chat = () => {
                     <Clock size={12} />
                     {formatTime(new Date())}
                   </span>
-                </div>
-                <div className="typing-indicator">
+                </div>                <div className="typing-indicator">
                   <div className="typing-dots">
                     <div className="dot"></div>
                     <div className="dot"></div>
@@ -376,13 +510,17 @@ const Chat = () => {
               )}
             </button>          </div>
         </div>
-      </div>
-
-      {/* Modal de historial */}
+      </div>      {/* Modal de historial */}
       <ChatHistory 
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
         onLoadHistory={handleLoadConversation}
+      />
+
+      {/* Modal de estadísticas - FASE 2 */}
+      <StatsModal 
+        isOpen={showStats}
+        onClose={() => setShowStats(false)}
       />
     </div>
   );

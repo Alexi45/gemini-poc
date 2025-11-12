@@ -90,9 +90,14 @@ export const chatAPI = {
       conversationId 
     });
     return response.data;
-  },
-  // Obtener historial de chat (conversaciones)
+  },  // Obtener historial de chat (conversaciones)
   getHistory: async (page = 1, limit = 20) => {
+    const response = await api.get(`/chat/conversations?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  // Obtener lista de conversaciones
+  getConversations: async (page = 1, limit = 20) => {
     const response = await api.get(`/chat/conversations?page=${page}&limit=${limit}`);
     return response.data;
   },
@@ -100,6 +105,18 @@ export const chatAPI = {
   // Obtener conversación específica
   getConversation: async (conversationId) => {
     const response = await api.get(`/chat/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  // Renombrar conversación
+  renameConversation: async (conversationId, newTitle) => {
+    const response = await api.put(`/chat/conversations/${conversationId}/rename`, { title: newTitle });
+    return response.data;
+  },
+
+  // Marcar/desmarcar conversación como favorita
+  toggleFavoriteConversation: async (conversationId, isFavorite) => {
+    const response = await api.put(`/chat/conversations/${conversationId}/favorite`, { isFavorite });
     return response.data;
   },
 
@@ -116,8 +133,14 @@ export const chatAPI = {
   },
 
   // Exportar conversación
-  exportConversation: async (conversationId) => {
-    const response = await api.get(`/chat/conversations/${conversationId}/export`);
+  exportConversation: async (conversationId, format = 'pdf') => {
+    const response = await api.get(`/chat/conversations/${conversationId}/export?format=${format}`);
+    return response.data;
+  },
+
+  // Crear nueva conversación
+  createConversation: async (title = null) => {
+    const response = await api.post('/chat/conversations/new', { title });
     return response.data;
   },
 

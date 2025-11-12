@@ -67,9 +67,7 @@ class DatabaseManager {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         metadata TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`,
-
-      // Tabla de tokens de recuperación de contraseña
+      )`,      // Tabla de tokens de recuperación de contraseña
       `CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -77,6 +75,17 @@ class DatabaseManager {
         expires_at DATETIME NOT NULL,
         used BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+
+      // Tabla de conversaciones - FASE 2
+      `CREATE TABLE IF NOT EXISTS conversations (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        title TEXT,
+        is_favorite BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`
     ];

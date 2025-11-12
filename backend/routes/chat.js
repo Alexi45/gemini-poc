@@ -13,8 +13,17 @@ router.post('/send', chatController.sendMessage);
 // Obtener lista de conversaciones
 router.get('/conversations', chatController.getConversations);
 
+// Crear nueva conversación
+router.post('/conversations/new', chatController.createNewConversation);
+
 // Obtener conversación específica
 router.get('/conversations/:conversationId', chatController.getConversation);
+
+// Renombrar conversación - FASE 2
+router.put('/conversations/:conversationId/rename', chatController.renameConversation);
+
+// Marcar/desmarcar como favorita - FASE 2
+router.put('/conversations/:conversationId/favorite', chatController.toggleFavoriteConversation);
 
 // Eliminar conversación
 router.delete('/conversations/:conversationId', chatController.deleteConversation);
@@ -24,6 +33,9 @@ router.get('/conversations/:conversationId/export', chatController.exportConvers
 
 // Buscar en mensajes
 router.get('/search', chatController.searchMessages);
+
+// Buscar en conversaciones - FASE 2
+router.get('/search/conversations', chatController.searchConversations);
 
 // Obtener estadísticas del usuario
 router.get('/stats', chatController.getUserStats);

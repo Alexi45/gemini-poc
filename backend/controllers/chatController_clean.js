@@ -193,6 +193,7 @@ const getUserStats = async (req, res) => {
 };
 
 // Nuevas funciones para la Fase 2
+
 const renameConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -277,6 +278,7 @@ const searchConversations = async (req, res) => {
 const createNewConversation = async (req, res) => {
   try {
     const { title } = req.body;
+    const userId = req.user.id;
     const conversationId = uuidv4();
 
     res.json({

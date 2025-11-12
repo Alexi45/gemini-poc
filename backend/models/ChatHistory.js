@@ -160,13 +160,41 @@ class ChatHistory {
   // Eliminar conversación
   async deleteConversation(userId, conversationId) {
     try {
-      const result = await this.db.runAsync(`
-        DELETE FROM chat_history 
-        WHERE user_id = ? AND conversation_id = ?
-      `, [userId, conversationId]);
-      return result.changes > 0;
+      // Primero eliminar todos los mensajes de la conversación
+      const deleteMessagesPromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          DELETE FROM chat_history 
+          WHERE user_id = ? AND conversation_id = ?
+        `, [userId, conversationId], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes });
+          }
+        });
+      });
+
+      await deleteMessagesPromise;
+
+      // Luego eliminar la conversación de la tabla de conversaciones (si existe)
+      const deleteConversationPromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          DELETE FROM conversations 
+          WHERE id = ? AND user_id = ?
+        `, [conversationId, userId], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes });
+          }
+        });
+      });
+
+      await deleteConversationPromise;
+
+      return { success: true, message: 'Conversación eliminada' };
     } catch (error) {
-      console.error('Error en ChatHistory.deleteConversation:', error);
+      console.error('Error en deleteConversation:', error);
       throw error;
     }
   }
@@ -196,30 +224,59 @@ class ChatHistory {
   // Obtener estadísticas totales del usuario
   async getUserStats(userId) {
     try {
-      const stats = await this.db.getAsync(`
-        SELECT 
-          COUNT(DISTINCT conversation_id) as total_conversations,
-          COUNT(*) as total_messages,
-          COUNT(CASE WHEN message_type = 'user' THEN 1 END) as total_user_messages,
-          COUNT(CASE WHEN message_type = 'assistant' THEN 1 END) as total_assistant_messages,
-          MIN(timestamp) as first_message_at,
-          MAX(timestamp) as last_message_at
-        FROM chat_history 
-        WHERE user_id = ?
-      `, [userId]);
-      
-      return stats || {
-        total_conversations: 0,
-        total_messages: 0,
-        total_user_messages: 0,
-        total_assistant_messages: 0,
-        first_message_at: null,
-        last_message_at: null
+      const statsPromise = new Promise((resolve, reject) => {
+        this.db.get(`
+          SELECT 
+            COUNT(DISTINCT conversation_id) as total_conversations,
+            COUNT(*) as total_messages,
+            COUNT(CASE WHEN message_type = 'user' THEN 1 END) as user_messages,
+            COUNT(CASE WHEN message_type = 'assistant' THEN 1 END) as assistant_messages,
+            MIN(timestamp) as first_message_date,
+            MAX(timestamp) as last_message_date
+          FROM chat_history 
+          WHERE user_id = ?
+        `, [userId], (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row || {});
+          }
+        });
+      });
+
+      const stats = await statsPromise;
+
+      // Obtener conversaciones por día en los últimos 30 días
+      const activityPromise = new Promise((resolve, reject) => {
+        this.db.all(`
+          SELECT 
+            DATE(timestamp) as date,
+            COUNT(*) as message_count
+          FROM chat_history 
+          WHERE user_id = ? 
+            AND timestamp >= datetime('now', '-30 days')
+          GROUP BY DATE(timestamp)
+          ORDER BY date ASC
+        `, [userId], (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows || []);
+          }
+        });
+      });
+
+      const activity = await activityPromise;
+
+      return {
+        ...stats,
+        daily_activity: activity
       };
     } catch (error) {
-      console.error('Error en ChatHistory.getUserStats:', error);
+      console.error('Error en getUserStats:', error);
       throw error;
-    }  }
+    }
+  }
 
   // Obtener total de mensajes del usuario
   async getTotalUserMessages(userId) {
@@ -285,6 +342,112 @@ class ChatHistory {
       return result.changes;
     } catch (error) {
       console.error('Error en ChatHistory.cleanOldConversations:', error);
+      throw error;
+    }
+  }
+
+  // Renombrar conversación - FASE 2
+  async renameConversation(userId, conversationId, newTitle) {
+    try {
+      const updatePromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          UPDATE conversations 
+          SET title = ?, updated_at = datetime('now')
+          WHERE id = ? AND user_id = ?
+        `, [newTitle, conversationId, userId], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes });
+          }
+        });
+      });
+
+      const result = await updatePromise;
+      
+      if (result.changes === 0) {
+        throw new Error('Conversación no encontrada');
+      }
+
+      return { success: true, message: 'Conversación renombrada' };
+    } catch (error) {
+      console.error('Error en renameConversation:', error);
+      throw error;
+    }
+  }
+
+  // Marcar/desmarcar conversación como favorita - FASE 2
+  async toggleFavoriteConversation(userId, conversationId, isFavorite) {
+    try {
+      const updatePromise = new Promise((resolve, reject) => {
+        this.db.run(`
+          UPDATE conversations 
+          SET is_favorite = ?, updated_at = datetime('now')
+          WHERE id = ? AND user_id = ?
+        `, [isFavorite ? 1 : 0, conversationId, userId], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes });
+          }
+        });
+      });
+
+      const result = await updatePromise;
+      
+      if (result.changes === 0) {
+        throw new Error('Conversación no encontrada');
+      }
+
+      return { success: true, isFavorite };
+    } catch (error) {
+      console.error('Error en toggleFavoriteConversation:', error);
+      throw error;
+    }
+  }
+
+  // Buscar en conversaciones - FASE 2
+  async searchConversations(userId, searchTerm, page = 1, limit = 50) {
+    try {
+      const offset = (page - 1) * limit;
+      
+      const searchPromise = new Promise((resolve, reject) => {
+        this.db.all(`
+          SELECT DISTINCT 
+            conversation_id,
+            content,
+            timestamp,
+            message_type
+          FROM chat_history 
+          WHERE user_id = ? 
+            AND (content LIKE ? OR content LIKE ?)
+          ORDER BY timestamp DESC 
+          LIMIT ? OFFSET ?
+        `, [
+          userId, 
+          `%${searchTerm}%`, 
+          `%${searchTerm.toLowerCase()}%`, 
+          limit, 
+          offset
+        ], (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows || []);
+          }
+        });
+      });
+
+      const results = await searchPromise;
+
+      return {
+        results,
+        page,
+        limit,
+        total: results.length
+      };
+    } catch (error) {
+      console.error('Error en searchConversations:', error);
       throw error;
     }
   }
