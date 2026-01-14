@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const sendMessage = async (req, res) => {
   try {
-    const { message, conversationId } = req.body;
+    const { message, conversationId, aiModel } = req.body;
     const userId = req.user.id;
 
     if (!message) {
@@ -22,7 +22,19 @@ const sendMessage = async (req, res) => {
     await chatHistory.addMessage(userId, currentConversationId, 'user', message);
     
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Seleccionar modelo según la preferencia del usuario
+      const selectedModel = aiModel || 'gemini-2.5-flash';
+      
+      // Mapeo de modelos disponibles
+      const modelMap = {
+        'gemini-2.5-flash': 'gemini-2.5-flash',
+        'gemini-pro': 'gemini-pro',
+        'gemini-ultra': 'gemini-1.5-pro' // Ultra usa Pro como fallback
+      };
+      
+      const modelName = modelMap[selectedModel] || 'gemini-2.5-flash';
+      
+      const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(message);
       const assistantMessage = result.response.text();
 
@@ -32,7 +44,8 @@ const sendMessage = async (req, res) => {
         success: true,
         data: {
           message: assistantMessage,
-          conversationId: currentConversationId
+          conversationId: currentConversationId,
+          modelUsed: selectedModel
         }
       });
 

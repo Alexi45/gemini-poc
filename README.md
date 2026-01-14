@@ -219,14 +219,48 @@ frontend/
 - ✅ Rate limiting y seguridad completa
 - ✅ Responsive design optimizado
 - ✅ Indicadores de estado en tiempo real
+- ✅ Sistema de notificaciones push del navegador
+- ✅ Exportar conversaciones a PDF y TXT
+- ✅ Búsqueda avanzada en historial de conversaciones
+- ✅ Configuraciones de usuario avanzadas y personalizables
+- ✅ Integración con múltiples modelos de IA (Flash, Pro, Ultra)
+- ✅ Sistema de plugins/extensiones modular
+- ✅ Compartir conversaciones mediante enlaces
+- ✅ Modo voz (speech-to-text y text-to-speech)
+- ✅ Análisis de sentimientos en conversaciones
+
+### Sistema de Plugins Integrados:
+- 🔢 **Calculadora** - Realiza cálculos matemáticos con `/calc`
+- 🌐 **Traductor** - Traduce texto con `/traducir`
+- 🔍 **Búsqueda Web** - Abre Google con `/buscar`
+- 💻 **Generador de Código** - Ayuda con código usando `/code`
+- 📝 **Resumidor** - Resume textos largos con `/resumir`
+
+### Funciones de Voz:
+- 🎤 **Speech-to-Text** - Habla para escribir mensajes
+- 🔊 **Text-to-Speech** - Escucha las respuestas de Gemini
+- 🎚️ **Controles de voz** - Pausa, reanuda y cancela audio
+
+### Análisis Inteligente:
+- 📊 **Análisis de sentimientos** - Detecta emociones en conversaciones
+- 📈 **Estadísticas de sentimiento** - Positivo, negativo, neutral
+- 📉 **Línea de tiempo emocional** - Evolución del tono en el chat
+- 🎯 **Confianza de análisis** - Precisión de la detección
+
+### Funcionalidades Avanzadas:
+- 📝 **Historial de versiones** - Navega entre múltiples respuestas regeneradas
+- 🔮 **Análisis predictivo** - Sugerencias inteligentes basadas en patrones
+- 📊 **Estadísticas de uso** - Temas principales, frases comunes, engagement
+- 💾 **Modo offline** - Sincronización automática cuando vuelves online
+- ☁️ **Google Drive** - Exporta conversaciones directamente a la nube
+- 🎨 **Comparación de versiones** - Compara respuestas del AI lado a lado
 
 ### Próximas Mejoras Sugeridas:
-- 🔄 Sistema de notificaciones push
-- 🔄 Exportar conversaciones (PDF/TXT)  
-- 🔄 Búsqueda en historial de conversaciones
-- 🔄 Configuraciones de usuario avanzadas
-- 🔄 Integración con múltiples modelos de IA
-- 🔄 Sistema de plugins/extensiones
+- 🔄 Integración con Dropbox
+- 🔄 Modo colaborativo para conversaciones en equipo
+- 🔄 Integración con Slack y Microsoft Teams
+- 🔄 Análisis de código en tiempo real
+- 🔄 Exportación a más formatos (Markdown, JSON, DOCX)
 
 ## 📞 Soporte y Contacto
 

@@ -1,9 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap, History } from 'lucide-react';
+import { Send, Bot, User, Clock, AlertCircle, CheckCircle, XCircle, RotateCcw, Sparkles, MessageCircle, Zap, History, Settings as SettingsIcon, FileDown, Share2, BarChart3, GitBranch, Brain } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { chatAPI } from '../services/api';
 import Header from './Header';
 import ChatHistory from './ChatHistory';
+import Settings from './Settings';
+import VoiceControls from './VoiceControls';
+import SentimentAnalysis from './SentimentAnalysis';
+import PredictiveSuggestions from './PredictiveSuggestions';
+import VersionHistory from './VersionHistory';
+import { exportToPDF, exportToTXT } from '../utils/exportUtils';
+import { initializeNotifications, notifyMessageReceived, notifyError, notifyLongResponseComplete, notifyConnectionLost, notifyConnectionRestored, notifyExportComplete } from '../utils/notifications';
+import { generateShareLink, copyToClipboard } from '../utils/shareUtils';
+import pluginManager from '../utils/pluginSystem';
+import { ResponseVersionManager } from '../utils/versionManager';
+import { PredictiveAnalyzer } from '../utils/predictiveAnalyzer';
 
 const Chat = () => {
   const { user } = useAuth();
@@ -13,7 +24,16 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connected');
-  const [messageCount, setMessageCount] = useState(0);  const [showHistory, setShowHistory] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
+  const [versionManager] = useState(() => new ResponseVersionManager());
+  const [predictiveAnalyzer] = useState(() => new PredictiveAnalyzer());
+  const [showPredictions, setShowPredictions] = useState(false);
+  const [predictiveReport, setPredictiveReport] = useState(null);
+  const [selectedMessageForVersions, setSelectedMessageForVersions] = useState(null);
   const chatEndRef = useRef(null);
   const lastMessageRef = useRef(null);
   // Auto scroll to bottom when messages change or to last AI message if it's long
@@ -44,17 +64,20 @@ const Chat = () => {
 
   // Check backend connection on mount
   useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await fetch('http://localhost:4000/api/test');
+        const newStatus = response.ok ? 'connected' : 'error';
+        setConnectionStatus(newStatus);
+      } catch (err) {
+        setConnectionStatus('disconnected');
+      }
+    };
+
     checkConnection();
+    initializeNotifications();
   }, []);
 
-  const checkConnection = async () => {
-    try {
-      const response = await fetch('http://localhost:4000/api/test');
-      setConnectionStatus(response.ok ? 'connected' : 'error');
-    } catch (err) {
-      setConnectionStatus('disconnected');
-    }
-  };
   const formatTime = (date) => {
     return date.toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
@@ -98,6 +121,31 @@ const Chat = () => {
   const handleSend = async () => {
     if (!input.trim() || loading) return;
     
+    // Verificar si es un comando de plugin
+    if (pluginManager.isCommand(input.trim())) {
+      const result = await pluginManager.executeCommand(input.trim());
+      
+      const commandMessage = {
+        role: 'user',
+        text: input,
+        timestamp: new Date(),
+        id: Date.now()
+      };
+      
+      const responseMessage = {
+        role: 'assistant',
+        text: result.result,
+        timestamp: new Date(),
+        id: Date.now() + 1,
+        isCommand: true
+      };
+      
+      setMessages(prev => [...prev, commandMessage, responseMessage]);
+      setMessageCount(prev => prev + 1);
+      setInput('');
+      return;
+    }
+    
     const userMessage = {
       role: 'user', 
       text: input, 
@@ -112,7 +160,11 @@ const Chat = () => {
     
     const currentInput = input;
     setInput('');    try {
-      const response = await chatAPI.sendMessage(currentInput, currentConversationId);
+      // Obtener configuraciones para el modelo de IA
+      const settings = JSON.parse(localStorage.getItem('user_settings') || '{}');
+      const selectedModel = settings.aiModel || 'gemini-2.5-flash';
+      
+      const response = await chatAPI.sendMessage(currentInput, currentConversationId, selectedModel);
       
       setIsTyping(false);
       
@@ -131,6 +183,20 @@ const Chat = () => {
         
         setMessages(prev => [...prev, assistantMessage]);
         setConnectionStatus('connected');
+        
+        // Agregar primera versión al historial de versiones
+        const settings = JSON.parse(localStorage.getItem('user_settings') || '{}');
+        const selectedModel = settings.aiModel || 'gemini-2.5-flash';
+        versionManager.addVersion(assistantMessage.id, response.data.message, selectedModel);
+        
+        // Notificar respuesta recibida
+        const preview = response.data.message.substring(0, 100);
+        notifyMessageReceived(preview);
+        
+        // Notificar si es una respuesta larga
+        if (response.data.message.length > 500) {
+          notifyLongResponseComplete();
+        }
       } else {
         throw new Error(response.message || 'Error desconocido');
       }
@@ -148,6 +214,9 @@ const Chat = () => {
       
       setMessages(prev => [...prev, errorMessage]);
       setConnectionStatus('error');
+      
+      // Notificar error
+      notifyError(errorMessage.text);
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -159,8 +228,130 @@ const Chat = () => {
   };
 
   const clearChat = () => {
-    setMessages([]);
-    setMessageCount(0);
+    if (window.confirm('¿Estás seguro de que quieres limpiar el chat actual?')) {
+      setMessages([]);
+      setMessageCount(0);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (messages.length === 0) {
+      alert('No hay mensajes para exportar');
+      return;
+    }
+    
+    exportToPDF(messages, currentConversationId || 'current');
+    notifyExportComplete('PDF');
+    setShowExportMenu(false);
+  };
+
+  const handleExportTXT = () => {
+    if (messages.length === 0) {
+      alert('No hay mensajes para exportar');
+      return;
+    }
+    
+    exportToTXT(messages, currentConversationId || 'current');
+    notifyExportComplete('TXT');
+    setShowExportMenu(false);
+  };
+
+  const handleShareConversation = async () => {
+    if (messages.length === 0) {
+      alert('No hay mensajes para compartir');
+      return;
+    }
+
+    const result = await generateShareLink(currentConversationId || 'current', messages);
+    
+    if (result.success) {
+      const copied = await copyToClipboard(result.shareUrl);
+      
+      if (copied) {
+        alert('¡Enlace copiado al portapapeles!');
+      } else {
+        alert(`Enlace generado: ${result.shareUrl}`);
+      }
+    } else {
+      alert('Error al generar enlace para compartir');
+    }
+  };
+
+  const handleVoiceTranscript = (transcript) => {
+    setInput(transcript);
+  };
+
+  // Análisis predictivo
+  const handleShowPredictions = () => {
+    if (messages.length === 0) {
+      alert('No hay suficiente historial para hacer predicciones');
+      return;
+    }
+
+    const report = predictiveAnalyzer.generatePredictiveReport(messages);
+    setPredictiveReport(report);
+    setShowPredictions(true);
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setInput(suggestion);
+    setShowPredictions(false);
+  };
+
+  // Historial de versiones
+  const handleRegenerateResponse = async (messageId) => {
+    const message = messages.find(msg => msg.id === messageId);
+    if (!message || message.role === 'user') return;
+
+    // Encontrar el mensaje del usuario anterior
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    const userMessage = messages[messageIndex - 1];
+    
+    if (!userMessage || userMessage.role !== 'user') return;
+
+    setLoading(true);
+    setIsTyping(true);
+
+    try {
+      const settings = JSON.parse(localStorage.getItem('user_settings') || '{}');
+      const selectedModel = settings.aiModel || 'gemini-2.5-flash';
+      
+      const response = await chatAPI.sendMessage(userMessage.text, currentConversationId, selectedModel);
+      
+      setIsTyping(false);
+      
+      if (response.success) {
+        // Agregar nueva versión
+        versionManager.addVersion(messageId, response.data.message, selectedModel);
+        
+        // Actualizar el mensaje en la lista
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, text: response.data.message }
+            : msg
+        ));
+
+        notifyMessageReceived('Nueva versión generada');
+      }
+    } catch (error) {
+      console.error('Error regenerando:', error);
+      notifyError('Error al regenerar respuesta');
+    } finally {
+      setLoading(false);
+      setIsTyping(false);
+    }
+  };
+
+  const handleShowVersionHistory = (messageId) => {
+    setSelectedMessageForVersions(messageId);
+  };
+
+  const handleUpdateMessageVersion = (messageId, newText) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, text: newText }
+        : msg
+    ));
   };
 
   // Cargar historial desde el modal de historial
@@ -238,10 +429,61 @@ const Chat = () => {
               <History size={16} />
             </button>
             
+            <button 
+              onClick={() => setShowSettings(true)} 
+              className="settings-btn" 
+              title="Configuraciones"
+            >
+              <SettingsIcon size={16} />
+            </button>
+            
             {messageCount > 0 && (
-              <button onClick={clearChat} className="clear-btn" title="Limpiar chat">
-                <RotateCcw size={16} />
-              </button>
+              <>
+                <button 
+                  onClick={handleShowPredictions} 
+                  className="predictions-btn" 
+                  title="Análisis predictivo"
+                >
+                  <Brain size={16} />
+                </button>
+                
+                <button 
+                  onClick={() => setShowSentimentAnalysis(true)} 
+                  className="sentiment-btn" 
+                  title="Análisis de sentimientos"
+                >
+                  <BarChart3 size={16} />
+                </button>
+                
+                <button 
+                  onClick={handleShareConversation} 
+                  className="share-btn" 
+                  title="Compartir conversación"
+                >
+                  <Share2 size={16} />
+                </button>
+                
+                <div className="export-menu-container">
+                  <button 
+                    onClick={() => setShowExportMenu(!showExportMenu)} 
+                    className="export-btn" 
+                    title="Exportar conversación"
+                  >
+                    <FileDown size={16} />
+                  </button>
+                  
+                  {showExportMenu && (
+                    <div className="export-menu">
+                      <button onClick={handleExportPDF}>Exportar PDF</button>
+                      <button onClick={handleExportTXT}>Exportar TXT</button>
+                    </div>
+                  )}
+                </div>
+                
+                <button onClick={clearChat} className="clear-btn" title="Limpiar chat">
+                  <RotateCcw size={16} />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -313,6 +555,32 @@ const Chat = () => {
                 <div className="message-text">
                   {formatMessageText(message.text)}
                 </div>
+                
+                {/* Botones de versión para mensajes de la IA */}
+                {message.role === 'assistant' && !message.error && (
+                  <div className="message-actions">
+                    <button
+                      onClick={() => handleRegenerateResponse(message.id)}
+                      className="action-btn"
+                      title="Regenerar respuesta"
+                      disabled={loading}
+                    >
+                      <RotateCcw size={14} />
+                      Regenerar
+                    </button>
+                    
+                    {versionManager.getVersions(message.id)?.length > 1 && (
+                      <button
+                        onClick={() => handleShowVersionHistory(message.id)}
+                        className="action-btn"
+                        title="Ver historial de versiones"
+                      >
+                        <GitBranch size={14} />
+                        Versiones ({versionManager.getVersions(message.id).length})
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -349,6 +617,10 @@ const Chat = () => {
 
         <div className="input-container">
           <div className="input-wrapper">
+            <VoiceControls 
+              onTranscript={handleVoiceTranscript}
+              lastMessage={messages[messages.length - 1]}
+            />
             <input
               type="text"
               value={input}
@@ -384,6 +656,38 @@ const Chat = () => {
         onClose={() => setShowHistory(false)}
         onLoadHistory={handleLoadConversation}
       />
+      
+      {/* Modal de configuraciones */}
+      <Settings 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+      
+      {/* Modal de análisis de sentimientos */}
+      <SentimentAnalysis 
+        messages={messages}
+        isOpen={showSentimentAnalysis}
+        onClose={() => setShowSentimentAnalysis(false)}
+      />
+      
+      {/* Modal de análisis predictivo */}
+      {showPredictions && predictiveReport && (
+        <PredictiveSuggestions
+          report={predictiveReport}
+          onClose={() => setShowPredictions(false)}
+          onSelectSuggestion={handleSelectSuggestion}
+        />
+      )}
+      
+      {/* Modal de historial de versiones */}
+      {selectedMessageForVersions && (
+        <VersionHistory
+          versionManager={versionManager}
+          messageId={selectedMessageForVersions}
+          onClose={() => setSelectedMessageForVersions(null)}
+          onUpdateMessage={handleUpdateMessageVersion}
+        />
+      )}
     </div>
   );
 };

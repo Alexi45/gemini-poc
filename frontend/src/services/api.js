@@ -84,10 +84,11 @@ export const authAPI = {
 
 // Servicios del chat con Gemini
 export const chatAPI = {
-  sendMessage: async (message, conversationId = null) => {
+  sendMessage: async (message, conversationId = null, aiModel = null) => {
     const response = await api.post('/chat/send', { 
       message,
-      conversationId 
+      conversationId,
+      aiModel
     });
     return response.data;
   },
